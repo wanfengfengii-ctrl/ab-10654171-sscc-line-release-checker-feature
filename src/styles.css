@@ -118,6 +118,57 @@ th {
   color: #45566a;
 }
 
+/* ---- 窗口化明细：只有视口与缓冲区内的行被挂载 ---- */
+
+.result-scroll {
+  height: 460px;
+  overflow-y: auto;
+  border: 1px solid #d5dde4;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.result-table {
+  table-layout: fixed;
+  /* 分离边框模型保证每行恰好 38px，避免数万行后滚动高度与行号换算漂移 */
+  border-collapse: separate;
+  border-spacing: 0;
+  border: none;
+}
+
+.result-table .col-line {
+  width: 72px;
+}
+
+.result-table .col-digit {
+  width: 110px;
+}
+
+.result-table .col-status {
+  width: 260px;
+}
+
+.result-table th,
+.result-table td {
+  height: 38px;
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.result-table .row-spacer td {
+  padding: 0;
+  border-bottom: none;
+  background: #fff;
+}
+
 tr[data-status='ok'] td {
   background: #f4fbf6;
 }
@@ -128,12 +179,42 @@ tr[data-status='duplicate'] td {
   background: #fdf3f3;
 }
 
-tr.first-problem td {
+tr.current-problem td {
   background: #ffe9e9;
   font-weight: 600;
 }
 
-tr.first-problem:focus {
+tr.current-problem:focus {
   outline: 3px solid #d33;
   outline-offset: -3px;
+}
+
+/* ---- 问题游标导航 ---- */
+
+.problem-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.problem-nav button {
+  padding: 7px 16px;
+  font-size: 0.92rem;
+  background: #4a6480;
+}
+
+.problem-nav button:hover:not(:disabled) {
+  background: #3a5169;
+}
+
+.problem-nav button:disabled {
+  background: #b6c0ca;
+  cursor: not-allowed;
+}
+
+.problem-position {
+  font-size: 0.92rem;
+  color: #45566a;
+  font-weight: 600;
 }

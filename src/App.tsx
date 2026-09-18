@@ -1,12 +1,7 @@
-import { FormEvent, RefObject, useEffect, useRef, useState } from 'react';
-import { BatchResult, LineResult, evaluateBatch } from './sscc';
-
-const STATUS_LABEL: Record<LineResult['status'], string> = {
-  ok: '通过',
-  'format-error': '格式错误：须为恰好 18 个数字',
-  'check-error': '校验位不符',
-  duplicate: '重复',
-};
+import { FormEvent, useState } from 'react';
+import { BatchResult, evaluateBatch } from './sscc';
+import { cursorAt, moveCursor } from './problemCursor';
+import VirtualResultTable from './VirtualResultTable';
 
 function Verdict({ result }: { result: BatchResult }) {
   if (!result.hasLines) {
@@ -37,58 +32,41 @@ function Verdict({ result }: { result: BatchResult }) {
   );
 }
 
-function ResultRow({
-  line,
-  isFirstProblem,
-  problemRef,
-}: {
-  line: LineResult;
-  isFirstProblem: boolean;
-  problemRef: RefObject<HTMLTableRowElement>;
-}) {
-  const statusText =
-    line.status === 'check-error'
-      ? `校验位不符：实收 ${line.received}，应为 ${line.computed}`
-      : line.status === 'duplicate'
-        ? `与第 ${line.duplicateOf} 行重复`
-        : STATUS_LABEL[line.status];
-  return (
-    <tr
-      data-testid={`row-${line.lineNumber}`}
-      data-status={line.status}
-      ref={isFirstProblem ? problemRef : undefined}
-      tabIndex={isFirstProblem ? -1 : undefined}
-      className={isFirstProblem ? 'first-problem' : undefined}
-    >
-      <td>{line.lineNumber}</td>
-      <td>
-        <code>{line.raw}</code>
-      </td>
-      <td data-testid="received">{line.received ?? '—'}</td>
-      <td data-testid="computed">{line.computed ?? '—'}</td>
-      <td>{statusText}</td>
-    </tr>
-  );
-}
-
 export default function App() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<BatchResult | null>(null);
-  const firstProblemRef = useRef<HTMLTableRowElement>(null);
+  /** 当前问题在 problemLineNumbers 中的序号（0 起）；无结果或无失败行时为 null。 */
+  const [cursorIndex, setCursorIndex] = useState<number | null>(null);
+  /** 每次提交递增，作为明细表的 key：新批次从顶部窗口开始，不继承旧滚动位置。 */
+  const [batchNonce, setBatchNonce] = useState(0);
 
-  // 提交后若存在未通过行，把焦点移到首个问题行
-  useEffect(() => {
-    firstProblemRef.current?.focus();
-  }, [result]);
+  const cursor = result && cursorIndex !== null ? cursorAt(result.problemLineNumbers, cursorIndex) : null;
+  const focusLineNumber = cursor ? cursor.lineNumber : null;
 
   function handleChange(value: string) {
     setInput(value);
-    setResult(null); // 输入改变，立即清除旧结论
+    // 输入发生修改：结果、窗口位置（明细表随结果卸载）与问题游标一并清除
+    setResult(null);
+    setCursorIndex(null);
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setResult(evaluateBatch(input)); // 只保留当前批次的完整结果
+    const next = evaluateBatch(input); // 领域结果仍保存全部非空行及原始行号
+    setResult(next);
+    setBatchNonce((n) => n + 1);
+    // 阻断后问题游标从首个失败行开始；没有失败行则不设游标
+    setCursorIndex(next.problemLineNumbers.length > 0 ? 0 : null);
+  }
+
+  function step(delta: number) {
+    if (!result || cursorIndex === null) {
+      return;
+    }
+    const next = moveCursor(result.problemLineNumbers, cursorIndex, delta);
+    if (next) {
+      setCursorIndex(next.index);
+    }
   }
 
   return (
@@ -117,27 +95,36 @@ export default function App() {
         <section aria-live="polite">
           <Verdict result={result} />
           {result.lines.length > 0 && (
-            <table>
-              <thead>
-                <tr>
-                  <th>行号</th>
-                  <th>SSCC</th>
-                  <th>实收校验位</th>
-                  <th>计算校验位</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.lines.map((line) => (
-                  <ResultRow
-                    key={line.lineNumber}
-                    line={line}
-                    isFirstProblem={line.lineNumber === result.firstProblemLine}
-                    problemRef={firstProblemRef}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <>
+              <div className="problem-nav" data-testid="problem-nav">
+                <button
+                  type="button"
+                  data-testid="prev-problem"
+                  onClick={() => step(-1)}
+                  disabled={cursor === null || cursor.isFirst}
+                >
+                  上一个问题
+                </button>
+                <button
+                  type="button"
+                  data-testid="next-problem"
+                  onClick={() => step(1)}
+                  disabled={cursor === null || cursor.isLast}
+                >
+                  下一个问题
+                </button>
+                <span className="problem-position" data-testid="problem-position">
+                  {cursor
+                    ? `问题 ${cursor.index + 1} / ${cursor.total}（第 ${cursor.lineNumber} 行）`
+                    : '无待处理问题'}
+                </span>
+              </div>
+              <VirtualResultTable
+                key={batchNonce}
+                lines={result.lines}
+                focusLineNumber={focusLineNumber}
+              />
+            </>
           )}
         </section>
       )}

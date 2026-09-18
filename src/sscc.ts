@@ -29,12 +29,18 @@ export interface LineResult {
 }
 
 export interface BatchResult {
-  /** 每个非空行一条结果，按原始行号升序。 */
+  /** 每个非空行一条结果，按原始行号升序（完整保留，供汇总与放行判定使用）。 */
   lines: LineResult[];
   /** 是否存在至少一个非空行。 */
   hasLines: boolean;
   /** 首个未通过行的原始行号；全部通过或无行时为 null。 */
   firstProblemLine: number | null;
+  /**
+   * 全部未通过行的原始行号，按输入位置（原始行号）升序。
+   * 作为问题游标的完整索引：序号由数组位置决定，稀疏行号不会造成游标错位。
+   * 无失败行时为空数组。
+   */
+  problemLineNumbers: number[];
   /** 批内被标记为重复的行数。 */
   duplicateCount: number;
   /** 仅当存在非空行且全部合格时为 true。 */
@@ -108,12 +114,16 @@ export function evaluateBatch(input: string): BatchResult {
     }
   }
 
-  const firstProblem = lines.find((line) => line.status !== 'ok') ?? null;
+  const problemLineNumbers = lines
+    .filter((line) => line.status !== 'ok')
+    .map((line) => line.lineNumber);
+  const firstProblem = problemLineNumbers.length > 0 ? problemLineNumbers[0] : null;
   const duplicateCount = lines.filter((line) => line.status === 'duplicate').length;
   return {
     lines,
     hasLines: lines.length > 0,
-    firstProblemLine: firstProblem ? firstProblem.lineNumber : null,
+    firstProblemLine: firstProblem,
+    problemLineNumbers,
     duplicateCount,
     canRelease: lines.length > 0 && firstProblem === null,
   };
