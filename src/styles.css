@@ -69,6 +69,11 @@ button:hover {
   background: #255ccf;
 }
 
+button:disabled {
+  background: #a9b8c9;
+  cursor: not-allowed;
+}
+
 section {
   margin-top: 24px;
 }
@@ -98,24 +103,82 @@ section {
   border: 1px solid #f0cf8a;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #d5dde4;
+.problem-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
 }
 
-th,
-td {
+.problem-nav button {
+  padding: 6px 16px;
+  font-size: 0.9rem;
+}
+
+.problem-position {
+  color: #45566a;
+  font-weight: 600;
+}
+
+/* 窗口化明细：视口固定高度，行高恒定，页面只挂载视口与缓冲区内的行 */
+.result-viewport {
+  overflow-y: auto;
+  border: 1px solid #d5dde4;
+  border-radius: 6px;
+  background: #fff;
+}
+
+table.result-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+
+.result-table col.col-line {
+  width: 9%;
+}
+
+.result-table col.col-sscc {
+  width: 27%;
+}
+
+.result-table col.col-digit {
+  width: 12%;
+}
+
+.result-table col.col-status {
+  width: 40%;
+}
+
+.result-table th,
+.result-table td {
   text-align: left;
   padding: 8px 12px;
   border-bottom: 1px solid #e3e9ee;
 }
 
-th {
+.result-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
   background: #eef2f6;
   font-size: 0.85rem;
   color: #45566a;
+}
+
+.result-table tbody td {
+  height: 40px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-table tr.spacer td {
+  padding: 0;
+  border: 0;
 }
 
 tr[data-status='ok'] td {
@@ -128,12 +191,12 @@ tr[data-status='duplicate'] td {
   background: #fdf3f3;
 }
 
-tr.first-problem td {
+tr.current-problem td {
   background: #ffe9e9;
   font-weight: 600;
 }
 
-tr.first-problem:focus {
+tr.current-problem:focus {
   outline: 3px solid #d33;
   outline-offset: -3px;
 }
